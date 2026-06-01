@@ -61,7 +61,7 @@ class Config:
     # App behaviour
     # ------------------------------------------------------------------
     DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads')
+    UPLOAD_FOLDER = os.getenv('UPLOAD_FOLDER', os.path.join(os.path.dirname(os.path.abspath(__file__)), 'uploads'))
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16 MB
     GEMINI_TIMEOUT_SECONDS = int(os.getenv('GEMINI_TIMEOUT_SECONDS', '20'))
     GEMINI_REPORT_TIMEOUT_SECONDS = int(os.getenv('GEMINI_REPORT_TIMEOUT_SECONDS', '15'))

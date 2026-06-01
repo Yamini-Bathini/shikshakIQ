@@ -1,40 +1,33 @@
 """
-Minimal standalone Flask for Vercel - tests Python runtime works.
+Vercel serverless entry point for ShikshakIQ Flask API.
 """
-import sys
 import os
+import sys
 
-from flask import Flask, jsonify
+# ── Override paths for Vercel's read-only filesystem ──
+# SQLite database must be in /tmp (the only writable directory on Vercel)
+os.environ.setdefault('DATABASE_URL', 'sqlite:////tmp/shikshakiq.db')
+os.environ.setdefault('UPLOAD_FOLDER', '/tmp/uploads')
 
-flask_app = Flask(__name__)
+# Ensure backend/ is in the Python import path
+backend_path = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    'backend'
+)
+if backend_path not in sys.path:
+    sys.path.insert(0, backend_path)
 
-@flask_app.route('/')
-def root():
-    return jsonify({"status": "ok", "message": "Python runtime works"})
+# Create writable directories under /tmp
+os.makedirs('/tmp/uploads', exist_ok=True)
+os.makedirs('/tmp/dist', exist_ok=True)
 
-@flask_app.route('/health')
-def health():
-    return jsonify({"status": "healthy"})
+from app import create_app
 
-@flask_app.route('/debug')
-def debug():
-    return jsonify({
-        "cwd": os.getcwd(),
-        "vercel": os.environ.get('VERCEL', 'not set'),
-        "vercel_env": os.environ.get('VERCEL_ENV', 'not set'),
-        "python": sys.version,
-        "path": sys.path[:5]
-    })
+flask_app = create_app()
 
-class _StripPrefixMiddleware:
-    def __init__(self, wsgi_app):
-        self.wsgi_app = wsgi_app
-    def __call__(self, environ, start_response):
-        path = environ.get('PATH_INFO', '')
-        if path.startswith('/api/'):
-            environ['PATH_INFO'] = path[4:]
-        elif path == '/api':
-            environ['PATH_INFO'] = '/'
-        return self.wsgi_app(environ, start_response)
+# Override static folder to /tmp/dist so the catch-all SPA route
+# doesn't crash when ../dist doesn't exist alongside the function.
+flask_app.static_folder = '/tmp/dist'
 
-app = _StripPrefixMiddleware(flask_app)
+# Vercel expects `app` as the WSGI callable
+app = flask_app
