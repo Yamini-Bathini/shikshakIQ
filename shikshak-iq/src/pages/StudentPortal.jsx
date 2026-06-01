@@ -178,35 +178,28 @@ export default function StudentPortal() {
               </div>
             </div>
 
-            <motion.button
-              type="submit"
-              disabled={loading}
+            <motion.div
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
-                  Signing In...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <HiOutlineLogin size={16} />
-                  {t('studentPortal.signIn', 'Sign In to Your Portal')}
-                </span>
-              )}
-            </motion.button>
-
-            <div className="text-center pt-2">
               <button
-                type="button"
-                onClick={() => navigate('/teacher-portal')}
-                className="text-xs text-gray-500 hover:text-purple-400 transition-colors"
+                type="submit"
+                disabled={loading}
+                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50"
               >
-                {t('studentPortal.switchToTeacher', 'Switch to Teacher Portal →')}
+                {loading ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
+                    Signing In...
+                  </span>
+                ) : (
+                  <span className="flex items-center justify-center gap-2">
+                    <HiOutlineLogin size={16} />
+                    {t('studentPortal.signIn', 'Sign In to Your Portal')}
+                  </span>
+                )}
               </button>
-            </div>
+            </motion.div>
 
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-2">
@@ -217,6 +210,16 @@ export default function StudentPortal() {
               </p>
             </div>
           </form>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => navigate('/teacher-portal')}
+              className="text-xs text-gray-500 hover:text-purple-400 transition-colors cursor-pointer"
+            >
+              {t('studentPortal.switchToTeacher', 'Switch to Teacher Portal →')}
+            </button>
+          </div>
         </motion.div>
       </div>
     );
