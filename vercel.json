@@ -1,18 +1,7 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "shikshak-iq/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "dist"
-      }
-    }
-  ],
+  "buildCommand": "cd shikshak-iq && npm install && npm run build",
+  "outputDirectory": "shikshak-iq/dist",
   "routes": [
     { "src": "/api/(.*)", "dest": "api/index.py" },
     { "handle": "filesystem" },
