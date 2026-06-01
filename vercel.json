@@ -3,6 +3,7 @@
   "buildCommand": "cd shikshak-iq && npm install && npm run build",
   "outputDirectory": "shikshak-iq/dist",
   "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.py" },
     { "handle": "filesystem" },
     { "src": "/(.*)", "dest": "/index.html" }
   ]
