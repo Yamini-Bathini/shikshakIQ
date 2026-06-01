@@ -146,11 +146,14 @@ export default function StudentPortal() {
               <div className="relative">
                 <HiOutlineUserCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
+                  id="student-username"
+                  name="username"
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username (e.g., student.aarav)"
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none input-glow"
+                  autoComplete="username"
                   required
                 />
               </div>
@@ -161,11 +164,14 @@ export default function StudentPortal() {
               <div className="relative">
                 <HiOutlineLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
                 <input
+                  id="student-password"
+                  name="password"
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-12 text-white placeholder-gray-500 focus:outline-none input-glow"
+                  autoComplete="current-password"
                   required
                 />
                 <button
