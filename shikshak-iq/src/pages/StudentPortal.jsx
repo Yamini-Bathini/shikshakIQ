@@ -264,7 +264,8 @@ export default function StudentPortal() {
             </div>
 
             <button
-              type="submit"
+              type="button"
+              onClick={handleLogin}
               disabled={loading}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
