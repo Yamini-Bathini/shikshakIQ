@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,8 @@ export default function StudentPortal() {
   const [quizResult, setQuizResult] = useState(null);
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
   const [generatingQuizzes, setGeneratingQuizzes] = useState(false);
+  const loginRef = useRef(null);
+  loginRef.current = handleLogin;
 
   // Check for existing token on mount
   useEffect(() => {
@@ -258,7 +260,7 @@ export default function StudentPortal() {
             <button
               type="button"
               disabled={loading}
-              onMouseDown={handleLogin}
+              ref={(el) => { if (el && !el._hasNativeClick) { el._hasNativeClick = true; el.onclick = () => loginRef.current(); } }}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Signing In...' : 'Sign In to Your Portal'}
