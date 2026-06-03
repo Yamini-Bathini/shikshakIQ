@@ -38,7 +38,6 @@ export default function StudentPortal() {
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
   const [generatingQuizzes, setGeneratingQuizzes] = useState(false);
   const loginRef = useRef(null);
-  loginRef.current = handleLogin;
 
   // Check for existing token on mount
   useEffect(() => {
@@ -102,6 +101,7 @@ export default function StudentPortal() {
       setLoading(false);
     }
   };
+  loginRef.current = handleLogin;
 
   const fetchProfile = async () => {
     try {
