@@ -71,9 +71,12 @@ export default function StudentPortal() {
     setRemediation(null);
     try {
       const res = await studentPortalAPI.login(username, password);
-      const { token, student: studentData } = res.data;
+      const { token, student: studentData } = res.data || {};
+      if (!token) {
+        throw new Error(t('studentPortal.invalidResponse', 'Invalid response from server. Please try again.'));
+      }
       localStorage.setItem('shikshak_iq_student_token', token);
-      setStudent(studentData);
+      if (studentData) setStudent(studentData);
       setView('dashboard');
       fetchProfile();
     } catch (err) {
@@ -125,10 +128,11 @@ export default function StudentPortal() {
     try {
       setLoading(true);
       const res = await studentPortalAPI.getRemediationQuizzes();
-      setRemediation(res.data);
+      setRemediation(res.data || { remediation_quizzes: [] });
       setView('remediation');
     } catch (err) {
-      console.error(err);
+      console.error('Failed to fetch remediation quizzes:', err);
+      alert(t('studentPortal.fetchError', 'Failed to load practice quizzes. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -311,7 +315,7 @@ export default function StudentPortal() {
           <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => window.location.href = '/teacher-portal'}
+              onClick={() => navigate('/teacher-portal')}
               className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-purple-500/20 text-sm text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all"
             >
               <HiOutlineAcademicCap size={16} />
