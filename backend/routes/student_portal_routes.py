@@ -232,13 +232,26 @@ def get_student_remediation():
         if not student:
             return jsonify({'error': 'Student not found'}), 404
 
+        # 1) Get RemediationQuiz records (auto-generated from weak concepts)
         remediation_quizzes = RemediationQuiz.query.filter_by(student_id=student.id).order_by(RemediationQuiz.assigned_at.desc()).all()
 
-        # Return remediation quizzes with their questions
+        # 2) Get quizzes directly assigned by teachers (quiz.student_id = student.id)
+        directly_assigned = Quiz.query.filter_by(student_id=student.id).order_by(Quiz.created_at.desc()).all()
+
+        # 3) Merge both sources – build response from RemediationQuiz records first,
+        #    then include any directly-assigned quizzes that don't have a RemediationQuiz entry yet.
+        existing_quiz_ids = {rq.quiz_id for rq in remediation_quizzes}
+
+        # Track completed quiz IDs and scores for marking direct assignments as completed
+        completed_results = Result.query.filter_by(student_id=student.id).all()
+        completed_quiz_ids = {r.quiz_id for r in completed_results}
+        result_scores = {r.quiz_id: r.percentage for r in completed_results}
+
         result_data = []
+
+        # Add RemediationQuiz records
         for rq in remediation_quizzes:
             rq_data = rq.to_dict()
-            # Fetch quiz questions if quiz exists
             quiz = Quiz.query.get(rq.quiz_id)
             if quiz:
                 questions = QuizQuestion.query.filter_by(quiz_id=quiz.id).order_by(QuizQuestion.order_index).all()
@@ -249,10 +262,30 @@ def get_student_remediation():
                 rq_data['quiz'] = None
             result_data.append(rq_data)
 
+        # Add directly-assigned quizzes that don't have a RemediationQuiz record
+        for quiz in directly_assigned:
+            if quiz.id not in existing_quiz_ids:
+                questions = QuizQuestion.query.filter_by(quiz_id=quiz.id).order_by(QuizQuestion.order_index).all()
+                rq_data = {
+                    'id': -(quiz.id),  # negative synthetic ID to avoid collisions
+                    'quiz_id': quiz.id,
+                    'quiz_title': quiz.title,
+                    'student_id': student.id,
+                    'concept_name': quiz.topic or quiz.subject,
+                    'intervention_id': None,
+                    'is_completed': quiz.id in completed_quiz_ids,
+                    'score': result_scores.get(quiz.id),
+                    'assigned_at': quiz.created_at.isoformat() if quiz.created_at else None,
+                    'completed_at': None,
+                    'questions': [q.to_dict() for q in questions],
+                    'quiz': quiz.to_dict(),
+                }
+                result_data.append(rq_data)
+
         return jsonify({
             'remediation_quizzes': result_data,
-            'pending_count': sum(1 for rq in remediation_quizzes if not rq.is_completed),
-            'completed_count': sum(1 for rq in remediation_quizzes if rq.is_completed),
+            'pending_count': sum(1 for q in result_data if not q.get('is_completed')),
+            'completed_count': sum(1 for q in result_data if q.get('is_completed')),
         }), 200
 
     except Exception as e:
@@ -296,3 +329,126 @@ def complete_remediation_quiz(rem_id):
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+@student_portal_bp.route('/api/student/quizzes/<int:quiz_id>/submit', methods=['POST'])
+@jwt_required()
+def student_submit_quiz(quiz_id):
+    """Student submits answers to a practice/remediation quiz"""
+    try:
+        identity = get_jwt_identity()
+        if not identity or not isinstance(identity, str) or not identity.startswith('student_'):
+            return jsonify({'error': 'Invalid token'}), 401
+        student_id = int(identity.replace('student_', ''))
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'error': 'Student not found'}), 404
+
+        quiz = Quiz.query.get(quiz_id)
+        if not quiz:
+            return jsonify({'error': 'Quiz not found'}), 404
+
+        data = request.get_json() or {}
+        answers = data.get('answers', [])
+
+        questions = QuizQuestion.query.filter_by(quiz_id=quiz.id).order_by(QuizQuestion.order_index).all()
+        if not questions:
+            return jsonify({'error': 'No questions in this quiz'}), 400
+
+        # Evaluate answers
+        total_score = 0
+        answers_data = []
+        strengths = set()
+        weaknesses = set()
+        concept_responses = {}
+
+        for answer in answers:
+            question_id = answer.get('question_id')
+            student_answer = answer.get('answer', '')
+
+            question = next((q for q in questions if q.id == question_id), None)
+            if not question:
+                continue
+
+            is_correct = _check_student_answer(question, student_answer)
+            marks_obtained = question.marks if is_correct else 0
+            total_score += marks_obtained
+
+            answers_data.append({
+                'question_id': question_id,
+                'question_text': question.question_text,
+                'student_answer': student_answer,
+                'correct_answer': question.correct_answer,
+                'marks_obtained': marks_obtained,
+                'marks': question.marks,
+                'is_correct': is_correct,
+                'concept_tag': question.concept_tag
+            })
+
+            concept = question.concept_tag or 'general'
+            if concept not in concept_responses:
+                concept_responses[concept] = []
+            concept_responses[concept].append(is_correct)
+
+            if is_correct:
+                strengths.add(concept)
+            else:
+                weaknesses.add(concept)
+
+        percentage = (total_score / quiz.total_marks * 100) if quiz.total_marks > 0 else 0
+
+        # Create result record
+        result = Result(
+            quiz_id=quiz.id,
+            student_id=student.id,
+            score=total_score,
+            total_marks=quiz.total_marks,
+            percentage=round(percentage, 2),
+            answers_data=answers_data,
+            feedback=f'Completed practice quiz: {quiz.title}. Score: {total_score}/{quiz.total_marks}',
+            strengths=list(strengths),
+            weaknesses=list(weaknesses),
+            confidence=0.9
+        )
+        db.session.add(result)
+
+        # Mark associated RemediationQuiz as completed
+        rem_quiz = RemediationQuiz.query.filter_by(quiz_id=quiz.id, student_id=student.id).first()
+        if rem_quiz:
+            rem_quiz.is_completed = True
+            rem_quiz.score = round(percentage, 2)
+            rem_quiz.completed_at = datetime.utcnow()
+
+            if rem_quiz.intervention_id:
+                intervention = Intervention.query.get(rem_quiz.intervention_id)
+                if intervention:
+                    intervention.status = 'completed'
+                    intervention.outcome_score_after = percentage
+                    intervention.completion_date = datetime.utcnow()
+
+        db.session.commit()
+
+        return jsonify({
+            'result': result.to_dict(),
+            'total_score': total_score,
+            'total_marks': quiz.total_marks,
+            'percentage': round(percentage, 2),
+            'strengths': list(strengths),
+            'weaknesses': list(weaknesses),
+            'message': 'Quiz submitted successfully'
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+def _check_student_answer(question, student_answer):
+    """Check if student answer matches correct answer (case-insensitive)"""
+    if not student_answer or not question.correct_answer:
+        return False
+    if question.question_type == 'mcq':
+        return student_answer.strip().lower() == question.correct_answer.strip().lower()
+    else:
+        # For short/descriptive answers, do a simple comparison
+        return student_answer.strip().lower() == question.correct_answer.strip().lower()

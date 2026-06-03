@@ -95,6 +95,21 @@ def create_quiz():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
+        student_id = data.get('student_id')
+        if student_id:
+            # Verify the student exists and belongs to a class the teacher has access to
+            target_student = Student.query.get(student_id)
+            if not target_student:
+                return jsonify({'error': 'Student not found'}), 404
+            # Check teacher has access to this student's class
+            from models import TeacherAssignment
+            assignment = TeacherAssignment.query.filter_by(
+                teacher_id=teacher.id,
+                class_id=target_student.class_id
+            ).first()
+            if not assignment:
+                return jsonify({'error': 'You do not have access to this student'}), 403
+
         quiz = Quiz(
             title=data.get('title', 'Untitled Quiz'),
             subject=data.get('subject', ''),
@@ -106,7 +121,8 @@ def create_quiz():
             total_marks=data.get('total_marks', 0),
             duration_minutes=data.get('duration_minutes', 30),
             is_ai_generated=data.get('is_ai_generated', False),
-            teacher_id=teacher.id
+            teacher_id=teacher.id,
+            student_id=student_id
         )
         db.session.add(quiz)
         db.session.flush()
@@ -129,6 +145,16 @@ def create_quiz():
 
         total = sum(q.get('marks', 1) for q in questions_data)
         quiz.total_marks = total
+
+        # If this quiz is assigned to a student, create a RemediationQuiz link so it shows in their practice quizzes
+        if student_id:
+            rem_quiz_record = RemediationQuiz(
+                quiz_id=quiz.id,
+                student_id=student_id,
+                concept_name=data.get('topic', quiz.subject),
+                is_completed=False
+            )
+            db.session.add(rem_quiz_record)
 
         db.session.commit()
 
@@ -179,6 +205,19 @@ def generate_ai_quiz():
         if not questions:
             return jsonify({'error': 'Failed to generate quiz questions'}), 500
 
+        student_id = data.get('student_id')
+        if student_id:
+            target_student = Student.query.get(student_id)
+            if not target_student:
+                return jsonify({'error': 'Student not found'}), 404
+            from models import TeacherAssignment
+            assignment = TeacherAssignment.query.filter_by(
+                teacher_id=teacher.id,
+                class_id=target_student.class_id
+            ).first()
+            if not assignment:
+                return jsonify({'error': 'You do not have access to this student'}), 403
+
         marks_per_q = float(total_marks) / len(questions) if questions else 5.0
         quiz = Quiz(
             title=f"{subject} - {topic} ({difficulty})",
@@ -191,7 +230,8 @@ def generate_ai_quiz():
             total_marks=total_marks,
             duration_minutes=data.get('duration_minutes', 30),
             is_ai_generated=True,
-            teacher_id=teacher.id
+            teacher_id=teacher.id,
+            student_id=student_id
         )
         db.session.add(quiz)
         db.session.flush()
@@ -210,6 +250,16 @@ def generate_ai_quiz():
                 difficulty_param=0.5
             )
             db.session.add(question)
+
+        # If this AI quiz is assigned to a student, create a RemediationQuiz link
+        if student_id:
+            rem_quiz_record = RemediationQuiz(
+                quiz_id=quiz.id,
+                student_id=student_id,
+                concept_name=topic or subject,
+                is_completed=False
+            )
+            db.session.add(rem_quiz_record)
 
         db.session.commit()
 

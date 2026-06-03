@@ -49,3 +49,6 @@ Desktop.ini
 # Deployment artifacts
 *.zip
 shikshak-iq-deploy.zip
+
+.vercel
+.env*

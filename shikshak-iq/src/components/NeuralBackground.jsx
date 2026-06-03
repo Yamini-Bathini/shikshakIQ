@@ -420,7 +420,7 @@ export default function NeuralBackground() {
   }
 
   return (
-    <div className="fixed inset-0 z-0">
+    <div className="fixed inset-0 z-0" style={{ pointerEvents: 'none' }}>
       <Canvas
         camera={{ position: [0, 0, 18], fov: 60 }}
         dpr={[1, 1.5]} // Limited DPR for performance

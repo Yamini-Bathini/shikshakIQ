@@ -54,10 +54,24 @@ export default function Quizzes() {
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [printQuiz, setPrintQuiz] = useState(null);
+  const [students, setStudents] = useState([]);
+  const [selectedStudentId, setSelectedStudentId] = useState('');
 
   useEffect(() => {
     fetchQuizzes();
+    fetchStudents();
   }, [activeWorkspace]);
+
+  const fetchStudents = async () => {
+    try {
+      const params = {};
+      if (activeWorkspace) params.assignment_id = activeWorkspace.assignment_id;
+      const res = await studentAPI.getAll(params);
+      setStudents(res.data.students || []);
+    } catch (err) {
+      console.error('Error fetching students:', err);
+    }
+  };
 
   useEffect(() => {
     if (activeWorkspace) {
@@ -150,9 +164,11 @@ export default function Quizzes() {
         ...quizForm,
         total_marks: totalMarks,
         questions,
+        student_id: selectedStudentId ? parseInt(selectedStudentId) : null,
       });
       setView('list');
       setQuestions([]);
+      setSelectedStudentId('');
       setQuizForm(prev => ({
         ...prev,
         title: '',
@@ -172,8 +188,12 @@ export default function Quizzes() {
     e.preventDefault();
     setGenerating(true);
     try {
-      await quizAPI.generateAI(aiForm);
+      await quizAPI.generateAI({
+        ...aiForm,
+        student_id: selectedStudentId ? parseInt(selectedStudentId) : null,
+      });
       setView('list');
+      setSelectedStudentId('');
       fetchQuizzes();
     } catch (err) {
       alert(err.response?.data?.error || 'Failed to generate quiz');
@@ -316,6 +336,20 @@ export default function Quizzes() {
                     <option value="hard" className="bg-gray-900">Hard</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1.5">
+                    Assign to Student
+                    <span className="text-gray-600 ml-1">(optional)</span>
+                  </label>
+                  <select value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm input-glow">
+                    <option value="" className="bg-gray-900">— Whole Class —</option>
+                    {students.map((s) => (
+                      <option key={s.id} value={s.id} className="bg-gray-900">{s.name} ({s.roll_number})</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div className="border-t border-white/10 pt-6">
@@ -430,6 +464,20 @@ export default function Quizzes() {
                   <input type="number" value={aiForm.total_marks}
                     onChange={(e) => setAiForm({ ...aiForm, total_marks: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                     className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm input-glow" />
+                </div>
+                <div>
+                  <label className="block text-sm text-gray-300 mb-1.5">
+                    Assign to Student
+                    <span className="text-gray-600 ml-1">(optional)</span>
+                  </label>
+                  <select value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2.5 text-white text-sm input-glow">
+                    <option value="" className="bg-gray-900">— Whole Class —</option>
+                    {students.map((s) => (
+                      <option key={s.id} value={s.id} className="bg-gray-900">{s.name} ({s.roll_number})</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="flex gap-3 pt-4">

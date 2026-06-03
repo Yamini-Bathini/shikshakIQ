@@ -245,6 +245,7 @@ function LanguageBubble({ lang, index }) {
 
 export default function Landing() {
   const [mounted, setMounted] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const navigate = useNavigate();
   const { scrollYProgress } = useScroll();
   const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0]);
@@ -252,6 +253,12 @@ export default function Landing() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleScroll = () => setScrolled(window.scrollY > 50);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   const scrollToFeatures = () => {
@@ -274,7 +281,44 @@ export default function Landing() {
 
   return (
     <div className="relative min-h-screen bg-[#0a0a0f] overflow-hidden">
+      {/* ─── Top Navigation Bar ──────────────────────────────────────────── */}
+      <motion.nav
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-white/5' : 'bg-transparent'}`}
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center">
+                <span className="text-white font-bold text-sm">IQ</span>
+              </div>
+              <span className="text-lg font-semibold text-white">
+                Shikshak<span className="text-purple-400">IQ</span>
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/student-portal')}
+                className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2"
+              >
+                Student Portal
+              </button>
+              <button
+                onClick={() => navigate('/teacher-portal')}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.nav>
+
       {/* ─── Hero Section ─────────────────────────────────────────────────── */}
+      {/* Spacer for fixed nav */}
+      <div className="h-16" />
       <motion.section
         style={{ opacity: heroOpacity, scale: heroScale }}
         className="relative min-h-screen flex flex-col items-center justify-center px-4 pt-20 pb-16"
@@ -672,7 +716,7 @@ export default function Landing() {
             Join the future of education. No credit card, no sign-up — just instant access to the most advanced AI teaching platform.
           </p>
           <motion.button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/teacher-portal')}
             whileHover={{ scale: 1.06 }}
             whileTap={{ scale: 0.97 }}
             className="group relative px-10 py-4 rounded-xl font-semibold text-white text-base overflow-hidden"

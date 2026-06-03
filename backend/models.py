@@ -379,7 +379,10 @@ class Quiz(db.Model):
     is_ai_generated = db.Column(db.Boolean, default=False)
     is_remediation = db.Column(db.Boolean, default=False)  # Flag for auto-generated remediation quizzes
     teacher_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('students.id'), nullable=True, index=True)  # Direct assignment to a student
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    assigned_student = db.relationship('Student', backref='assigned_quizzes', lazy=True, foreign_keys=[student_id])
 
     questions = db.relationship('QuizQuestion', backref='quiz', lazy=True, cascade='all, delete-orphan')
     results = db.relationship('Result', backref='quiz', lazy=True, cascade='all, delete-orphan')
@@ -400,6 +403,7 @@ class Quiz(db.Model):
             'is_ai_generated': self.is_ai_generated,
             'is_remediation': self.is_remediation,
             'teacher_id': self.teacher_id,
+            'student_id': self.student_id,
             'questions_count': len(self.questions) if self.questions else 0,
             'created_at': self.created_at.isoformat() if self.created_at else None
         }

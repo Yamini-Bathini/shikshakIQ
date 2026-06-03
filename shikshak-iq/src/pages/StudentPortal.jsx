@@ -32,13 +32,27 @@ export default function StudentPortal() {
   const [profile, setProfile] = useState(null);
   const [progress, setProgress] = useState(null);
   const [remediation, setRemediation] = useState(null);
+  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [quizResult, setQuizResult] = useState(null);
+  const [submittingQuiz, setSubmittingQuiz] = useState(false);
 
   // Check for existing token on mount
   useEffect(() => {
     const token = localStorage.getItem('shikshak_iq_student_token');
     if (token) {
-      setView('dashboard');
-      fetchProfile();
+      // Try to fetch profile with existing token, clear if invalid
+      (async () => {
+        try {
+          const res = await studentPortalAPI.getProfile();
+          setProfile(res.data);
+          setView('dashboard');
+        } catch (err) {
+          // Token is invalid/expired - clear it and show login
+          localStorage.removeItem('shikshak_iq_student_token');
+          setView('login');
+        }
+      })();
     }
   }, []);
 
@@ -46,6 +60,11 @@ export default function StudentPortal() {
     e.preventDefault();
     setLoading(true);
     setError('');
+    // Clear any stale profile data before login to prevent flash of old data
+    setProfile(null);
+    setStudent(null);
+    setProgress(null);
+    setRemediation(null);
     try {
       const res = await studentPortalAPI.login(username, password);
       const { token, student: studentData } = res.data;
@@ -55,6 +74,7 @@ export default function StudentPortal() {
       fetchProfile();
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
+      setView('login');
     } finally {
       setLoading(false);
     }
@@ -104,6 +124,47 @@ export default function StudentPortal() {
     setView('login');
     setUsername('');
     setPassword('');
+    setActiveQuiz(null);
+    setQuizAnswers({});
+    setQuizResult(null);
+  };
+
+  const handleStartQuiz = (remQuiz) => {
+    setActiveQuiz(remQuiz);
+    setQuizAnswers({});
+    setQuizResult(null);
+  };
+
+  const handleAnswerChange = (questionId, answer) => {
+    setQuizAnswers(prev => ({ ...prev, [questionId]: answer }));
+  };
+
+  const handleSubmitQuiz = async () => {
+    if (!activeQuiz?.quiz_id) return;
+    setSubmittingQuiz(true);
+    try {
+      const formattedAnswers = Object.entries(quizAnswers).map(([qId, answer]) => ({
+        question_id: parseInt(qId),
+        answer: answer || '',
+      }));
+      const res = await studentPortalAPI.submitQuiz(activeQuiz.quiz_id, {
+        answers: formattedAnswers,
+      });
+      setQuizResult(res.data);
+      // Refresh remediation data
+      fetchRemediation();
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to submit quiz');
+    } finally {
+      setSubmittingQuiz(false);
+    }
+  };
+
+  const handleGoBackToPractice = () => {
+    setActiveQuiz(null);
+    setQuizAnswers({});
+    setQuizResult(null);
+    setView('remediation');
   };
 
   // Login View
@@ -184,28 +245,23 @@ export default function StudentPortal() {
               </div>
             </div>
 
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50"
-              >
-                {loading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
-                    Signing In...
-                  </span>
-                ) : (
-                  <span className="flex items-center justify-center gap-2">
-                    <HiOutlineLogin size={16} />
-                    {t('studentPortal.signIn', 'Sign In to Your Portal')}
-                  </span>
-                )}
-              </button>
-            </motion.div>
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
+                  Signing In...
+                </span>
+              ) : (
+                <span className="flex items-center justify-center gap-2">
+                  <HiOutlineLogin size={16} />
+                  {t('studentPortal.signIn', 'Sign In to Your Portal')}
+                </span>
+              )}
+            </button>
 
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-2">
@@ -217,12 +273,13 @@ export default function StudentPortal() {
             </div>
           </form>
 
-          <div className="mt-4 text-center">
+          <div className="mt-6 text-center">
             <button
               type="button"
-              onClick={() => navigate('/teacher-portal')}
-              className="text-xs text-gray-500 hover:text-purple-400 transition-colors cursor-pointer"
+              onClick={() => window.location.href = '/teacher-portal'}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-purple-500/20 text-sm text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all"
             >
+              <HiOutlineAcademicCap size={16} />
               {t('studentPortal.switchToTeacher', 'Switch to Teacher Portal →')}
             </button>
           </div>
@@ -544,6 +601,169 @@ export default function StudentPortal() {
     );
   }
 
+  // ─── Quiz Taking View ────────────────────────────────────────────────
+  if (activeQuiz && !quizResult) {
+    const questions = activeQuiz.questions || [];
+    const answeredCount = Object.keys(quizAnswers).length;
+
+    return (
+      <div className="min-h-screen bg-[#0a0a0f]">
+        <div className="glass sticky top-0 z-50">
+          <div className="max-w-5xl mx-auto px-4 py-3 flex items-center gap-4">
+            <button onClick={handleGoBackToPractice} className="text-sm text-purple-400 hover:text-purple-300">&larr; Back</button>
+            <span className="text-white font-semibold">{activeQuiz.quiz_title || 'Practice Quiz'}</span>
+            {questions.length > 0 && (
+              <span className="text-xs text-gray-500 ml-auto">{answeredCount}/{questions.length} answered</span>
+            )}
+          </div>
+        </div>
+        <div className="max-w-3xl mx-auto px-4 py-8">
+          <div className="glass rounded-xl p-6 border border-white/10 mb-6">
+            <h2 className="text-lg font-semibold text-white mb-2">{activeQuiz.quiz_title || `Practice: ${activeQuiz.concept_name}`}</h2>
+            <p className="text-sm text-gray-400">
+              {activeQuiz.quiz?.subject && `${activeQuiz.quiz.subject} `}• {activeQuiz.quiz?.difficulty || 'mixed'} • {activeQuiz.quiz?.total_marks || '?'} marks
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Concept: {activeQuiz.concept_name}</p>
+          </div>
+
+          {questions.length > 0 ? (
+            <>
+              <div className="space-y-6">
+                {questions.map((q, i) => (
+                  <div key={q.id} className="glass rounded-xl p-5 border border-white/10">
+                    <p className="text-sm text-white font-medium mb-3">
+                      <span className="text-purple-400">Q{i + 1}.</span> {q.question_text}
+                      <span className="text-gray-500 ml-2 text-xs">({q.marks} marks)</span>
+                    </p>
+                    {q.question_type === 'mcq' ? (
+                      <div className="space-y-2">
+                        {(q.options || []).filter(o => o).map((opt, oi) => (
+                          <label key={oi}
+                            className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                              quizAnswers[q.id] === opt ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/10 hover:bg-white/5'
+                            }`}
+                          >
+                            <input
+                              type="radio"
+                              name={`q_${q.id}`}
+                              value={opt}
+                              checked={quizAnswers[q.id] === opt}
+                              onChange={() => handleAnswerChange(q.id, opt)}
+                              className="text-purple-500"
+                            />
+                            <span className="text-sm text-gray-300">{opt}</span>
+                          </label>
+                        ))}
+                      </div>
+                    ) : (
+                      <textarea
+                        value={quizAnswers[q.id] || ''}
+                        onChange={(e) => handleAnswerChange(q.id, e.target.value)}
+                        placeholder="Type your answer..."
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-sm input-glow"
+                        rows={3}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                onClick={handleSubmitQuiz}
+                disabled={submittingQuiz || answeredCount === 0}
+                className="w-full mt-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-medium disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              >
+                {submittingQuiz ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
+                    Submitting...
+                  </span>
+                ) : (
+                  `Submit Answers (${answeredCount}/${questions.length} answered)`
+                )}
+              </button>
+            </>
+          ) : (
+            <div className="text-center py-16 text-gray-500">
+              <HiOutlineClipboardCheck className="mx-auto mb-4" size={48} />
+              <p>No questions available for this practice quiz.</p>
+              <p className="text-xs text-gray-600 mt-2">Contact your teacher to regenerate the quiz.</p>
+              <button onClick={handleGoBackToPractice} className="mt-6 px-6 py-2.5 rounded-xl bg-purple-500/20 text-purple-400 text-sm hover:bg-purple-500/30 transition-all">
+                Back to Practice Quizzes
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Quiz Result View ─────────────────────────────────────────────────
+  if (quizResult) {
+    const result = quizResult.result || {};
+    const pct = quizResult.percentage || result.percentage || 0;
+    const score = quizResult.total_score || result.score || 0;
+    const total = quizResult.total_marks || result.total_marks || 0;
+    const strengths = quizResult.strengths || result.strengths || [];
+    const weaknesses = quizResult.weaknesses || result.weaknesses || [];
+
+    const resultColor = pct >= 70 ? 'green' : pct >= 40 ? 'yellow' : 'red';
+    const resultGradient = resultColor === 'green' ? 'from-green-500 to-emerald-500'
+      : resultColor === 'yellow' ? 'from-yellow-500 to-orange-500'
+      : 'from-red-500 to-rose-500';
+
+    return (
+      <div className="min-h-screen bg-[#0a0a0f]">
+        <div className="max-w-3xl mx-auto px-4 py-12">
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="glass rounded-2xl p-8 border border-white/10 text-center">
+            <div className={`w-20 h-20 mx-auto mb-5 rounded-full bg-gradient-to-br ${resultGradient} flex items-center justify-center shadow-lg`}>
+              <span className="text-3xl text-white font-bold">{Math.round(pct)}%</span>
+            </div>
+
+            <h2 className="text-2xl font-bold text-white mb-2">Quiz Completed!</h2>
+            <p className="text-gray-400 mb-6">
+              Score: {score}/{total} ({Math.round(pct)}%)
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              <div className="p-5 rounded-xl bg-green-500/10 border border-green-500/20 text-left">
+                <p className="text-xs text-green-400 uppercase tracking-wider mb-2">Strengths</p>
+                {strengths.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {strengths.map((s, i) => (
+                      <span key={i} className="px-2.5 py-1 rounded-lg bg-green-500/10 text-green-300 text-xs">{s}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Keep practicing!</p>
+                )}
+              </div>
+              <div className="p-5 rounded-xl bg-red-500/10 border border-red-500/20 text-left">
+                <p className="text-xs text-red-400 uppercase tracking-wider mb-2">Areas to Improve</p>
+                {weaknesses.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {weaknesses.map((w, i) => (
+                      <span key={i} className="px-2.5 py-1 rounded-lg bg-red-500/10 text-red-300 text-xs">{w}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400">Great job!</p>
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={handleGoBackToPractice}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-medium hover:scale-[1.02] active:scale-[0.98] transition-transform"
+            >
+              Back to Practice Quizzes
+            </button>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   // Remediation View
   if (view === 'remediation') {
     const quizzes = remediation?.remediation_quizzes || [];
@@ -584,13 +804,28 @@ export default function StudentPortal() {
               </h2>
               <div className="space-y-3">
                 {pending.map((q, i) => (
-                  <div key={q.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                    <div>
-                      <p className="text-white font-medium">{q.quiz_title || `Remediation: ${q.concept_name}`}</p>
-                      <p className="text-xs text-gray-500 mt-1">Concept: {q.concept_name}</p>
+                  <motion.div
+                    key={q.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.05 }}
+                    className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10 hover:border-purple-500/30 transition-all"
+                  >
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{q.quiz_title || `Practice: ${q.concept_name}`}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {q.quiz?.subject && `${q.quiz.subject} • `}Concept: {q.concept_name}
+                        {q.quiz?.questions_count && ` • ${q.quiz.questions_count} questions`}
+                      </p>
                     </div>
-                    <span className="text-xs text-yellow-400 bg-yellow-500/10 px-3 py-1.5 rounded-lg">Pending</span>
-                  </div>
+                    <button
+                      onClick={() => handleStartQuiz(q)}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                    >
+                      <HiOutlineAcademicCap size={16} />
+                      Start Quiz
+                    </button>
+                  </motion.div>
                 ))}
               </div>
             </div>
@@ -607,11 +842,11 @@ export default function StudentPortal() {
                 {completed.map((q, i) => (
                   <div key={q.id} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
                     <div>
-                      <p className="text-white font-medium">{q.quiz_title || `Remediation: ${q.concept_name}`}</p>
+                      <p className="text-white font-medium">{q.quiz_title || `Practice: ${q.concept_name}`}</p>
                       <p className="text-xs text-gray-500 mt-1">Concept: {q.concept_name}</p>
                     </div>
                     <div className="text-right">
-                      <span className="text-lg font-bold text-green-400">{q.score || 0}%</span>
+                      <span className="text-lg font-bold text-green-400">{Math.round(q.score || 0)}%</span>
                       <p className="text-xs text-gray-500">Score</p>
                     </div>
                   </div>
@@ -623,7 +858,8 @@ export default function StudentPortal() {
           {quizzes.length === 0 && (
             <div className="text-center py-16 text-gray-500">
               <HiOutlineClipboardCheck className="mx-auto mb-4" size={48} />
-              <p>{t('studentPortal.noPracticeQuizzes', 'No practice quizzes assigned yet. Remediation quizzes are auto-generated based on your quiz performance.')}</p>
+              <p className="mb-4">{t('studentPortal.noPracticeQuizzes', 'No practice quizzes assigned yet. Remediation quizzes are auto-generated based on your quiz performance.')}</p>
+              <p className="text-xs text-gray-600">Take some quizzes first, and practice quizzes will be created automatically for concepts you need to improve.</p>
             </div>
           )}
         </div>
