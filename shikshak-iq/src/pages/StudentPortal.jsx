@@ -229,10 +229,12 @@ export default function StudentPortal() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
               <input
+                id="student-username"
+                name="username"
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="Enter your username (e.g., student.aarav)"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
                 autoComplete="username"
                 required
@@ -242,7 +244,9 @@ export default function StudentPortal() {
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
               <input
-                type="password"
+                id="student-password"
+                name="password"
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
@@ -262,10 +266,7 @@ export default function StudentPortal() {
 
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-2">
-                Demo credentials: username = student.aarav, password = student123
-              </p>
-              <p className="text-xs text-gray-600">
-                Other accounts: student.ananya, student.arjun, etc. (all use password: student123)
+                Demo: student.aarav / student123
               </p>
             </div>
           </form>
