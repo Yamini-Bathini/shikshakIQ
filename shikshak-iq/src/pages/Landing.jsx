@@ -299,18 +299,7 @@ export default function Landing() {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={() => navigate('/student-portal')}
-                className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2"
-              >
-                Student Portal
-              </button>
-              <button
-                onClick={() => navigate('/teacher-portal')}
-                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
-              >
-                Sign In
-              </button>
+              {/* Nav is intentionally clean - portal buttons are in the hero section below */}
             </div>
           </div>
         </div>
