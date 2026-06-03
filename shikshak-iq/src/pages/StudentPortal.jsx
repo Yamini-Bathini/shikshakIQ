@@ -227,7 +227,7 @@ export default function StudentPortal() {
             <p className="text-gray-400 text-sm">{t('studentPortal.portalDesc', 'Track your learning progress and improve')}</p>
           </div>
 
-          <form className="glass rounded-2xl p-8 space-y-6">
+          <form onSubmit={handleLogin} className="glass rounded-2xl p-8 space-y-6">
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -255,7 +255,6 @@ export default function StudentPortal() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none input-glow"
                   autoComplete="username"
                   required
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin(e)}
                 />
               </div>
             </div>
@@ -274,7 +273,6 @@ export default function StudentPortal() {
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-12 text-white placeholder-gray-500 focus:outline-none input-glow"
                   autoComplete="current-password"
                   required
-                  onKeyDown={(e) => e.key === 'Enter' && handleLogin(e)}
                 />
                 <button
                   type="button"
@@ -287,9 +285,8 @@ export default function StudentPortal() {
             </div>
 
             <button
-              type="button"
+              type="submit"
               disabled={loading}
-              onClick={handleLogin}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
             >
               {loading ? (
