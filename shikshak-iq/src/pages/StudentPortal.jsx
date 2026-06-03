@@ -210,104 +210,62 @@ export default function StudentPortal() {
   if (view === 'login') {
     return (
       <div className="min-h-screen bg-[#0a0a0f] flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full max-w-md"
-        >
+        <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <motion.div
-              className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 mb-4"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 3, repeat: Infinity }}
-            >
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-cyan-500 mb-4">
               <HiOutlineAcademicCap className="text-white" size={36} />
-            </motion.div>
-            <h1 className="text-2xl font-bold text-white mb-2">{t('studentPortal.portal', 'Student Portal')}</h1>
-            <p className="text-gray-400 text-sm">{t('studentPortal.portalDesc', 'Track your learning progress and improve')}</p>
+            </div>
+            <h1 className="text-2xl font-bold text-white mb-2">Student Portal</h1>
+            <p className="text-gray-400 text-sm">Track your learning progress and improve</p>
           </div>
 
-          <form onSubmit={handleLogin} className="glass rounded-2xl p-8 space-y-6">
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400"
-                >
-                  {error}
-                </motion.div>
-              )}
-            </AnimatePresence>
+          <form onSubmit={handleLogin} className="bg-white/5 rounded-2xl p-8 space-y-6 border border-white/10">
+            {error && (
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
+                {error}
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
-              <div className="relative">
-                <HiOutlineUserCircle className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                <input
-                  id="student-username"
-                  name="username"
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username (e.g., student.aarav)"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-gray-500 focus:outline-none input-glow"
-                  autoComplete="username"
-                  required
-                />
-              </div>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="Enter your username"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
+                autoComplete="username"
+                required
+              />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-              <div className="relative">
-                <HiOutlineLockClosed className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
-                <input
-                  id="student-password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-12 text-white placeholder-gray-500 focus:outline-none input-glow"
-                  autoComplete="current-password"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  {showPassword ? <HiOutlineEyeOff size={18} /> : <HiOutlineEye size={18} />}
-                </button>
-              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
+                autoComplete="current-password"
+                required
+              />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50"
             >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
-                  Signing In...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <HiOutlineLogin size={16} />
-                  {t('studentPortal.signIn', 'Sign In to Your Portal')}
-                </span>
-              )}
+              {loading ? 'Signing In...' : 'Sign In to Your Portal'}
             </button>
 
             <div className="text-center">
               <p className="text-xs text-gray-500 mb-2">
-                {t('studentPortal.demoCreds', 'Demo credentials: username = student.aarav, password = student123')}
+                Demo credentials: username = student.aarav, password = student123
               </p>
               <p className="text-xs text-gray-600">
-                {t('studentPortal.otherAccounts', 'Other accounts: student.ananya, student.arjun, etc. (all use password: student123)')}
+                Other accounts: student.ananya, student.arjun, etc. (all use password: student123)
               </p>
             </div>
           </form>
@@ -316,13 +274,12 @@ export default function StudentPortal() {
             <button
               type="button"
               onClick={() => navigate('/teacher-portal')}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-purple-500/20 text-sm text-purple-400 hover:bg-purple-500/10 hover:border-purple-500/40 transition-all"
+              className="px-4 py-2 rounded-xl border border-purple-500/20 text-sm text-purple-400 hover:bg-purple-500/10"
             >
-              <HiOutlineAcademicCap size={16} />
-              {t('studentPortal.switchToTeacher', 'Switch to Teacher Portal →')}
+              Switch to Teacher Portal →
             </button>
           </div>
-        </motion.div>
+        </div>
       </div>
     );
   }
