@@ -162,6 +162,7 @@ export const studentPortalAPI = {
   getProgress: () => api.get('/student/progress'),
   getRemediationQuizzes: () => api.get('/student/remediation-quizzes'),
   submitQuiz: (quizId, data) => api.post(`/student/quizzes/${quizId}/submit`, data),
+  generateRemediation: () => api.post('/student/remediation/generate'),
 };
 
 // Remediation APIs

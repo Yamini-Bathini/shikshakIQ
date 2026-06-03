@@ -36,6 +36,7 @@ export default function StudentPortal() {
   const [quizAnswers, setQuizAnswers] = useState({});
   const [quizResult, setQuizResult] = useState(null);
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
+  const [generatingQuizzes, setGeneratingQuizzes] = useState(false);
 
   // Check for existing token on mount
   useEffect(() => {
@@ -157,6 +158,22 @@ export default function StudentPortal() {
       alert(err.response?.data?.error || 'Failed to submit quiz');
     } finally {
       setSubmittingQuiz(false);
+    }
+  };
+
+  const handleGenerateRemediation = async () => {
+    setGeneratingQuizzes(true);
+    try {
+      const res = await studentPortalAPI.generateRemediation();
+      // Always refresh remediation data after generation
+      await fetchRemediation();
+      if (res.data.generated === 0 && res.data.message) {
+        alert(res.data.message);
+      }
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to generate practice quizzes');
+    } finally {
+      setGeneratingQuizzes(false);
     }
   };
 
@@ -589,11 +606,41 @@ export default function StudentPortal() {
                 Personalized Recommendation
               </h3>
               <p className="text-sm text-gray-300 mb-4">
-                Focus on your weakest concepts first. Complete the assigned remediation quizzes to strengthen these areas.
+                Focus on your weakest concepts first. Practice quizzes are auto-generated based on your weak areas.
               </p>
-              <button onClick={fetchRemediation} className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium">
-                View Practice Quizzes
-              </button>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  onClick={handleGenerateRemediation}
+                  disabled={generatingQuizzes}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+                >
+                  {generatingQuizzes ? (
+                    <>
+                      <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <HiOutlineSparkles size={16} />
+                      Generate Practice Quizzes
+                    </>
+                  )}
+                </button>
+                <button onClick={fetchRemediation} className="px-4 py-2.5 rounded-xl border border-purple-500/30 text-purple-400 text-sm font-medium hover:bg-purple-500/10 transition-all">
+                  View Existing
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* No weak concepts - all clear */}
+          {weakConcepts.length === 0 && concepts.length > 0 && (
+            <div className="glass rounded-xl p-6 border border-green-500/30 bg-green-500/5 text-center">
+              <h3 className="text-white font-semibold mb-2 flex items-center justify-center gap-2">
+                <HiOutlineClipboardCheck className="text-green-400" size={20} />
+                All Concepts Strong!
+              </h3>
+              <p className="text-sm text-gray-300">Great job! You're doing well across all concepts. Keep it up!</p>
             </div>
           )}
         </div>
@@ -858,8 +905,25 @@ export default function StudentPortal() {
           {quizzes.length === 0 && (
             <div className="text-center py-16 text-gray-500">
               <HiOutlineClipboardCheck className="mx-auto mb-4" size={48} />
-              <p className="mb-4">{t('studentPortal.noPracticeQuizzes', 'No practice quizzes assigned yet. Remediation quizzes are auto-generated based on your quiz performance.')}</p>
-              <p className="text-xs text-gray-600">Take some quizzes first, and practice quizzes will be created automatically for concepts you need to improve.</p>
+              <p className="mb-2">{t('studentPortal.noPracticeQuizzes', 'No practice quizzes assigned yet.')}</p>
+              <p className="text-sm text-gray-400 mb-6">Generate practice quizzes from your weak concepts to strengthen your understanding.</p>
+              <button
+                onClick={handleGenerateRemediation}
+                disabled={generatingQuizzes}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium disabled:opacity-50 hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+              >
+                {generatingQuizzes ? (
+                  <>
+                    <motion.div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} />
+                    Generating Practice Quizzes...
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineSparkles size={18} />
+                    Generate Practice Quizzes
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>

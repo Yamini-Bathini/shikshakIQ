@@ -4,6 +4,9 @@ from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identi
 from werkzeug.security import check_password_hash, generate_password_hash
 from models import StudentUser, Student, Result, ConceptMastery, Quiz, QuizQuestion, RemediationQuiz, Intervention, User, TeacherAssignment, Class, Subject
 from extensions import db
+from services.gemini_service import GeminiService
+
+gemini_service = GeminiService()
 
 student_portal_bp = Blueprint('student_portal', __name__)
 
@@ -443,6 +446,121 @@ def student_submit_quiz(quiz_id):
         return jsonify({'error': str(e)}), 500
 
 
+@student_portal_bp.route('/api/student/remediation/generate', methods=['POST'])
+@jwt_required()
+def student_generate_remediation():
+    """Student generates practice quizzes on-demand for their weak concepts"""
+    try:
+        identity = get_jwt_identity()
+        if not identity or not isinstance(identity, str) or not identity.startswith('student_'):
+            return jsonify({'error': 'Invalid token'}), 401
+        student_id = int(identity.replace('student_', ''))
+        student = Student.query.get(student_id)
+        if not student:
+            return jsonify({'error': 'Student not found'}), 404
+
+        # Get weak concepts (mastery < 40%)
+        masteries = ConceptMastery.query.filter_by(student_id=student.id).all()
+        weak_concepts = [m for m in masteries if m.mastery_level < 0.4]
+
+        if not weak_concepts:
+            return jsonify({
+                'message': 'No weak concepts found. Great job!',
+                'remediation_quizzes': [],
+                'generated': 0
+            }), 200
+
+        # Find a teacher for this student's class (needed for quiz.teacher_id)
+        assignment = TeacherAssignment.query.filter_by(class_id=student.class_id).first()
+        teacher_id = assignment.teacher_id if assignment else 1
+
+        created = []
+        skipped = []
+
+        for cm in weak_concepts[:3]:  # Limit to 3 weakest concepts
+            # Skip if already has an active (pending) remediation quiz for this concept
+            existing = RemediationQuiz.query.filter(
+                RemediationQuiz.student_id == student.id,
+                RemediationQuiz.concept_name == cm.concept_name,
+                RemediationQuiz.is_completed == False
+            ).first()
+            if existing:
+                skipped.append(cm.concept_name)
+                continue
+
+            # Generate quiz questions via Gemini or fallback
+            questions = gemini_service.generate_quiz(
+                class_name=student.class_name,
+                subject=assignment.subject_ref.name if assignment and assignment.subject_ref else 'General',
+                topic=cm.concept_name,
+                difficulty='easy' if cm.mastery_level < 0.2 else 'medium',
+                num_questions=5,
+                total_marks=20
+            )
+
+            if not questions:
+                questions = _fallback_student_remediation_questions(cm.concept_name)
+
+            # Create the quiz
+            rem_quiz = Quiz(
+                title=f'Practice: {cm.concept_name}',
+                subject=assignment.subject_ref.name if assignment and assignment.subject_ref else 'General',
+                subject_id=assignment.subject_id if assignment else None,
+                topic=cm.concept_name,
+                class_name=student.class_name,
+                class_id=student.class_id,
+                difficulty='easy' if cm.mastery_level < 0.2 else 'medium',
+                total_marks=20,
+                duration_minutes=15,
+                is_ai_generated=True,
+                is_remediation=True,
+                teacher_id=teacher_id,
+            )
+            db.session.add(rem_quiz)
+            db.session.flush()
+
+            # Add questions
+            for i, q_data in enumerate(questions):
+                q_mark = q_data.get('marks', 4)
+                question = QuizQuestion(
+                    quiz_id=rem_quiz.id,
+                    question_text=q_data.get('question_text', f'Practice question on {cm.concept_name}'),
+                    question_type=q_data.get('question_type', 'short'),
+                    options=q_data.get('options', []),
+                    correct_answer=q_data.get('correct_answer', ''),
+                    marks=q_mark,
+                    concept_tag=cm.concept_name,
+                    order_index=i,
+                    difficulty_param=0.3,
+                )
+                db.session.add(question)
+
+            db.session.flush()
+
+            # Create RemediationQuiz link (no Intervention for student self-generation)
+            rem_record = RemediationQuiz(
+                quiz_id=rem_quiz.id,
+                student_id=student.id,
+                concept_name=cm.concept_name,
+                is_completed=False,
+            )
+            db.session.add(rem_record)
+            created.append(rem_record)
+
+        db.session.commit()
+
+        return jsonify({
+            'message': f'Generated {len(created)} practice quiz(zes)' + (f'. Skipped {len(skipped)} with existing quizzes.' if skipped else ''),
+            'generated': len(created),
+            'skipped': len(skipped),
+            'weak_concepts_count': len(weak_concepts),
+        }), 201
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
 def _check_student_answer(question, student_answer):
     """Check if student answer matches correct answer (case-insensitive)"""
     if not student_answer or not question.correct_answer:
@@ -450,5 +568,40 @@ def _check_student_answer(question, student_answer):
     if question.question_type == 'mcq':
         return student_answer.strip().lower() == question.correct_answer.strip().lower()
     else:
-        # For short/descriptive answers, do a simple comparison
         return student_answer.strip().lower() == question.correct_answer.strip().lower()
+
+
+def _fallback_student_remediation_questions(concept):
+    """Generate static remediation questions when AI is unavailable"""
+    return [
+        {
+            'question_text': f'What is the basic concept of {concept}?',
+            'question_type': 'short', 'options': [],
+            'correct_answer': f'Understanding of {concept}', 'marks': 4,
+            'concept_tag': concept,
+        },
+        {
+            'question_text': f'Solve a simple problem related to {concept}.',
+            'question_type': 'short', 'options': [],
+            'correct_answer': f'Correct application of {concept}', 'marks': 4,
+            'concept_tag': concept,
+        },
+        {
+            'question_text': f'Explain {concept} in your own words.',
+            'question_type': 'descriptive', 'options': [],
+            'correct_answer': f'Clear explanation of {concept}', 'marks': 4,
+            'concept_tag': concept,
+        },
+        {
+            'question_text': f'What are the key principles of {concept}?',
+            'question_type': 'short', 'options': [],
+            'correct_answer': f'Key principles of {concept}', 'marks': 4,
+            'concept_tag': concept,
+        },
+        {
+            'question_text': f'Give a real-world example of {concept}.',
+            'question_type': 'descriptive', 'options': [],
+            'correct_answer': f'Practical application of {concept}', 'marks': 4,
+            'concept_tag': concept,
+        },
+    ]
