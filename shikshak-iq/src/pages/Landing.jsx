@@ -394,6 +394,24 @@ export default function Landing() {
                 </motion.button>
 
                 <motion.button
+                  onClick={() => navigate('/student-portal')}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.97 }}
+                  className="group relative px-8 py-3.5 rounded-xl font-semibold text-sm text-white overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 group-hover:opacity-90 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 opacity-0 group-hover:opacity-100 transition-opacity duration-700 blur-xl" />
+                  <span className="relative flex items-center gap-2">
+                    <HiOutlineUserGroup size={18} />
+                    Student Portal
+                    <HiOutlineArrowRight
+                      size={18}
+                      className="group-hover:translate-x-1 transition-transform"
+                    />
+                  </span>
+                </motion.button>
+
+                <motion.button
                   onClick={scrollToFeatures}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.97 }}
