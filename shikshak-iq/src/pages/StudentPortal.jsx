@@ -57,8 +57,7 @@ export default function StudentPortal() {
     }
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setLoading(true);
     setError('');
     // Clear any stale token and profile data before login to prevent
@@ -233,8 +232,7 @@ export default function StudentPortal() {
                 name="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }}
+                onChange={(e) => setUsername(e.target.value)}                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLogin(); } }}
                 placeholder="Enter your username (e.g., student.aarav)"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
                 autoComplete="username"
@@ -249,8 +247,7 @@ export default function StudentPortal() {
                 name="password"
                 type={showPassword ? 'text' : 'password'}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }}
+                onChange={(e) => setPassword(e.target.value)}                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleLogin(); } }}
                 placeholder="Enter your password"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
                 autoComplete="current-password"
@@ -261,7 +258,7 @@ export default function StudentPortal() {
             <button
               type="button"
               disabled={loading}
-              onClick={(e) => handleLogin(e)}
+              onMouseDown={handleLogin}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Signing In...' : 'Sign In to Your Portal'}
