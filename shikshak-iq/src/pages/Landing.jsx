@@ -298,12 +298,20 @@ export default function Landing() {
                 Shikshak<span className="text-purple-400">IQ</span>
               </span>
             </div>
-            <button
-              onClick={() => navigate('/teacher-portal')}
-              className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
-            >
-              Teacher Portal
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('/student-portal')}
+                className="text-sm text-gray-400 hover:text-white transition-colors px-3 py-2"
+              >
+                Student Portal
+              </button>
+              <button
+                onClick={() => navigate('/teacher-portal')}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white text-sm font-medium hover:shadow-lg hover:shadow-purple-500/25 transition-all"
+              >
+                Sign In
+              </button>
+            </div>
           </div>
         </div>
       </motion.nav>
