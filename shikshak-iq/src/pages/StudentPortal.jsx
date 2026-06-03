@@ -61,7 +61,10 @@ export default function StudentPortal() {
     e.preventDefault();
     setLoading(true);
     setError('');
-    // Clear any stale profile data before login to prevent flash of old data
+    // Clear any stale token and profile data before login to prevent
+    // the 401 interceptor in api.js from redirecting to /student-portal
+    // during a failed login attempt with old credentials.
+    localStorage.removeItem('shikshak_iq_student_token');
     setProfile(null);
     setStudent(null);
     setProgress(null);
@@ -74,7 +77,22 @@ export default function StudentPortal() {
       setView('dashboard');
       fetchProfile();
     } catch (err) {
-      setError(err.response?.data?.error || 'Login failed');
+      // Determine meaningful error message
+      let errorMsg;
+      if (err.response) {
+        // Server responded with an error
+        errorMsg = err.response.data?.error || 
+                   (err.response.status === 401 ? t('studentPortal.invalidCreds', 'Invalid username or password') :
+                    err.response.status === 403 ? t('studentPortal.deactivated', 'Account is deactivated') :
+                    err.response.status === 404 ? t('studentPortal.notFound', 'Student account not found') :
+                    t('studentPortal.serverError', 'Server error ({{status}})', { status: err.response.status }));
+      } else if (err.request) {
+        // Request made but no response received (network issue)
+        errorMsg = t('studentPortal.networkError', 'Unable to reach the server. Please check your connection and try again.');
+      } else {
+        errorMsg = err.message || t('studentPortal.unknownError', 'An unexpected error occurred');
+      }
+      setError(errorMsg);
       setView('login');
     } finally {
       setLoading(false);
