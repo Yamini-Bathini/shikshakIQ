@@ -352,7 +352,7 @@ export default function StudentPortal() {
             <div className="flex items-center gap-3">
               <span className="text-sm text-gray-400">{profile?.student?.name}</span>
               <button onClick={() => window.location.href = '/teacher-portal'} className="text-xs text-purple-400 hover:text-purple-300 px-3 py-1.5 rounded-lg hover:bg-purple-500/10">
-                Switch to Teacher
+                {t('studentPortal.switchToTeacher', 'Switch to Teacher')}
               </button>
               <button onClick={handleLogout} className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 rounded-lg hover:bg-red-500/10">
                 {t('nav.logout', 'Logout')}
