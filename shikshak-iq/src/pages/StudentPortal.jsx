@@ -219,7 +219,7 @@ export default function StudentPortal() {
             <p className="text-gray-400 text-sm">Track your learning progress and improve</p>
           </div>
 
-          <form onSubmit={handleLogin} className="bg-white/5 rounded-2xl p-8 space-y-6 border border-white/10">
+          <div className="bg-white/5 rounded-2xl p-8 space-y-6 border border-white/10">
             {error && (
               <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 text-sm text-red-400">
                 {error}
@@ -234,6 +234,7 @@ export default function StudentPortal() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }}
                 placeholder="Enter your username (e.g., student.aarav)"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
                 autoComplete="username"
@@ -249,6 +250,7 @@ export default function StudentPortal() {
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleLogin(e); }}
                 placeholder="Enter your password"
                 className="w-full bg-white/5 border border-white/10 rounded-xl py-3 px-4 text-white placeholder-gray-500"
                 autoComplete="current-password"
@@ -257,9 +259,10 @@ export default function StudentPortal() {
             </div>
 
             <button
-              type="submit"
+              type="button"
               disabled={loading}
-              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50"
+              onClick={(e) => handleLogin(e)}
+              className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 cursor-pointer"
             >
               {loading ? 'Signing In...' : 'Sign In to Your Portal'}
             </button>
@@ -269,7 +272,7 @@ export default function StudentPortal() {
                 Demo: student.aarav / student123
               </p>
             </div>
-          </form>
+          </div>
 
           <div className="mt-6 text-center">
             <button
