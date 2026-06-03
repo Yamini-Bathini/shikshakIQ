@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +37,7 @@ export default function StudentPortal() {
   const [quizResult, setQuizResult] = useState(null);
   const [submittingQuiz, setSubmittingQuiz] = useState(false);
   const [generatingQuizzes, setGeneratingQuizzes] = useState(false);
+  const loginSubmitted = useRef(false);
 
   // Check for existing token on mount
   useEffect(() => {
@@ -59,6 +60,9 @@ export default function StudentPortal() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    // Prevent double-firing from both form onSubmit and button onClick
+    if (loginSubmitted.current) return;
+    loginSubmitted.current = true;
     setLoading(true);
     setError('');
     // Clear any stale token and profile data before login to prevent
@@ -99,6 +103,7 @@ export default function StudentPortal() {
       setView('login');
     } finally {
       setLoading(false);
+      loginSubmitted.current = false;
     }
   };
 
@@ -285,7 +290,7 @@ export default function StudentPortal() {
             </div>
 
             <button
-              type="button"
+              type="submit"
               disabled={loading}
               onClick={handleLogin}
               className="w-full py-3 rounded-xl bg-gradient-to-r from-purple-600 to-cyan-600 text-white font-semibold text-sm disabled:opacity-50 hover:scale-[1.02] active:scale-[0.98] transition-transform"
